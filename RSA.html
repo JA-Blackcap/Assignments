@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RSA Encryption Assignment</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 650px; margin: 40px auto; padding: 20px; line-height: 1.6; }
+        .box { border: 1px solid #ccc; padding: 15px; border-radius: 6px; margin-bottom: 20px; background: #f9f9f9; }
+        input, textarea { width: 100%; padding: 8px; margin: 6px 0 12px; box-sizing: border-box; }
+        button { padding: 10px 16px; cursor: pointer; background: #0056b3; color: white; border: none; border-radius: 4px; }
+        button:hover { background: #004494; }
+        .output { background: #eef; padding: 10px; border-radius: 4px; word-break: break-all; font-family: monospace; }
+    </style>
+</head>
+<body>
+
+    <h2>RSA Algorithm Implementation</h2>
+
+    <div class="box">
+        <h3>1. Key Generation</h3>
+        <label>Prime p:</label>
+        <input type="number" id="primeP" value="61">
+        <label>Prime q:</label>
+        <input type="number" id="primeQ" value="53">
+        <button onclick="generateKeys()">Generate Keys</button>
+        <p class="output" id="keyOutput">Keys will appear here...</p>
+    </div>
+
+    <div class="box">
+        <h3>2. Encryption & Decryption</h3>
+        <label>Plaintext Message:</label>
+        <input type="text" id="messageInput" value="HELLO RSA">
+        <button onclick="encryptMessage()">Encrypt</button>
+        <button onclick="decryptMessage()">Decrypt</button>
+
+        <p><strong>Ciphertext:</strong></p>
+        <div class="output" id="cipherOutput">-</div>
+
+        <p><strong>Decrypted Text:</strong></p>
+        <div class="output" id="decryptOutput">-</div>
+    </div>
+
+    <script>
+        let publicKey = null;
+        let privateKey = null;
+
+        // Modular exponentiation: (base^exp) % mod using BigInt
+        function modPow(base, exp, mod) {
+            let result = 1n;
+            base = base % mod;
+            while (exp > 0n) {
+                if (exp % 2n === 1n) result = (result * base) % mod;
+                exp = exp / 2n;
+                base = (base * base) % mod;
+            }
+            return result;
+        }
+
+        // Greatest Common Divisor
+        function gcd(a, b) {
+            while (b !== 0n) {
+                let temp = b;
+                b = a % b;
+                a = temp;
+            }
+            return a;
+        }
+
+        // Extended Euclidean Algorithm for modular inverse
+        function modInverse(e, phi) {
+            let m0 = phi, t, q;
+            let x0 = 0n, x1 = 1n;
+            if (phi === 1n) return 0n;
+            while (e > 1n) {
+                q = e / phi;
+                t = phi;
+                phi = e % phi;
+                e = t;
+                t = x0;
+                x0 = x1 - q * x0;
+                x1 = t;
+            }
+            if (x1 < 0n) x1 += m0;
+            return x1;
+        }
+
+        function generateKeys() {
+            const p = BigInt(document.getElementById("primeP").value);
+            const q = BigInt(document.getElementById("primeQ").value);
+
+            const n = p * q;
+            const phi = (p - 1n) * (q - 1n);
+
+            let e = 3n;
+            while (gcd(e, phi) !== 1n) {
+                e += 2n;
+            }
+
+            const d = modInverse(e, phi);
+
+            publicKey = { e, n };
+            privateKey = { d, n };
+
+            document.getElementById("keyOutput").innerText =
+                `Public Key (e, n): (${e}, ${n}) | Private Key (d, n): (${d}, ${n})`;
+        }
+
+        function encryptMessage() {
+            if (!publicKey) generateKeys();
+            const text = document.getElementById("messageInput").value;
+            const encrypted = [];
+
+            for (let i = 0; i < text.length; i++) {
+                const m = BigInt(text.charCodeAt(i));
+                const c = modPow(m, publicKey.e, publicKey.n);
+                encrypted.push(c.toString());
+            }
+
+            document.getElementById("cipherOutput").innerText = encrypted.join(", ");
+        }
+
+        function decryptMessage() {
+            if (!privateKey) return;
+            const cipherText = document.getElementById("cipherOutput").innerText;
+            if (cipherText === "-") return;
+
+            const parts = cipherText.split(", ");
+            let decrypted = "";
+
+            for (let part of parts) {
+                const c = BigInt(part);
+                const m = modPow(c, privateKey.d, privateKey.n);
+                decrypted += String.fromCharCode(Number(m));
+            }
+
+            document.getElementById("decryptOutput").innerText = decrypted;
+        }
+    </script>
+
+</body>
+</html>
